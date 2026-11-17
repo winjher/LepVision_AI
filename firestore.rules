@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTask(task) {
+      return task in ['species', 'stage', 'disease', 'instar', 'defect', 'sex', 'full_scan'];
+    }
+
+    function isValidEngineMode(mode) {
+      return mode in ['gemini_vision', 'custom_cnn'];
+    }
+
+    function isValidClassificationRecord(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.task is string &&
+             data.task.size() >= 1 && data.task.size() <= 32 &&
+             isValidTask(data.task) &&
+             data.label is string &&
+             data.label.size() >= 1 && data.label.size() <= 100 &&
+             (data.confidence is int || data.confidence is float) &&
+             data.confidence >= 0.0 && data.confidence <= 1.0 &&
+             data.identified is bool &&
+             data.engineMode is string &&
+             data.engineMode.size() >= 1 && data.engineMode.size() <= 32 &&
+             isValidEngineMode(data.engineMode) &&
+             (!('speciesLabel' in data) || (data.speciesLabel is string && data.speciesLabel.size() <= 100)) &&
+             (!('stageLabel' in data) || (data.stageLabel is string && data.stageLabel.size() <= 50)) &&
+             (!('diseaseLabel' in data) || (data.diseaseLabel is string && data.diseaseLabel.size() <= 50)) &&
+             (!('instarLabel' in data) || (data.instarLabel is string && data.instarLabel.size() <= 50)) &&
+             (!('defectLabel' in data) || (data.defectLabel is string && data.defectLabel.size() <= 50)) &&
+             (!('sexLabel' in data) || (data.sexLabel is string && data.sexLabel.size() <= 50)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             (!('summary' in data) || (data.summary is string && data.summary.size() <= 800)) &&
+             (!('batchName' in data) || (data.batchName is string && data.batchName.size() <= 80)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBreedingBatch(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.targetSpecies is string && data.targetSpecies.size() >= 1 && data.targetSpecies.size() <= 100 &&
+             data.initialCount is int && data.initialCount >= 1 && data.initialCount <= 100000 &&
+             data.healthyLarvaeCount is int && data.healthyLarvaeCount >= 0 && data.healthyLarvaeCount <= 100000 &&
+             data.diseasedLarvaeCount is int && data.diseasedLarvaeCount >= 0 && data.diseasedLarvaeCount <= 100000 &&
+             data.goodPupaeCount is int && data.goodPupaeCount >= 0 && data.goodPupaeCount <= 100000 &&
+             data.defectivePupaeCount is int && data.defectivePupaeCount >= 0 && data.defectivePupaeCount <= 100000 &&
+             (data.predictedYieldPercent is int || data.predictedYieldPercent is float) &&
+             data.predictedYieldPercent >= 0.0 && data.predictedYieldPercent <= 100.0 &&
+             data.predictedAdultCount is int && data.predictedAdultCount >= 0 && data.predictedAdultCount <= 100000 &&
+             data.hostPlantHealth is string && data.hostPlantHealth.size() >= 1 && data.hostPlantHealth.size() <= 32 &&
+             data.hostPlantHealth in ['Optimal', 'Moderate', 'Stressed'] &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserPreferences(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.engineMode is string &&
+             data.engineMode.size() >= 1 && data.engineMode.size() <= 32 &&
+             isValidEngineMode(data.engineMode) &&
+             (!('customCnnUrl' in data) || (data.customCnnUrl is string && data.customCnnUrl.size() <= 300)) &&
+             (!('driveFolderId' in data) || (data.driveFolderId is string && data.driveFolderId.size() <= 128)) &&
+             (!('driveDirectoryPath' in data) || (data.driveDirectoryPath is string && data.driveDirectoryPath.size() <= 200)) &&
+             (!('speciesModelFile' in data) || (data.speciesModelFile is string && data.speciesModelFile.size() <= 100)) &&
+             (data.minConfidence is int || data.minConfidence is float) &&
+             data.minConfidence >= 0.1 && data.minConfidence <= 0.95 &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId}/classifications/{recordId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(recordId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(recordId) &&
+                       incoming().keys().hasAll(['userId', 'task', 'label', 'confidence', 'identified', 'engineMode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'task', 'label', 'confidence', 'identified',
+                         'speciesLabel', 'stageLabel', 'diseaseLabel', 'instarLabel',
+                         'defectLabel', 'sexLabel', 'notes', 'summary', 'engineMode',
+                         'batchName', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidClassificationRecord(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(recordId) &&
+                       isValidClassificationRecord(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'batchName', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(recordId);
+    }
+
+    match /users/{userId}/batches/{batchId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(batchId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(batchId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'name', 'targetSpecies', 'initialCount',
+                         'healthyLarvaeCount', 'diseasedLarvaeCount',
+                         'goodPupaeCount', 'defectivePupaeCount',
+                         'predictedYieldPercent', 'predictedAdultCount',
+                         'hostPlantHealth', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'name', 'targetSpecies', 'initialCount',
+                         'healthyLarvaeCount', 'diseasedLarvaeCount',
+                         'goodPupaeCount', 'defectivePupaeCount',
+                         'predictedYieldPercent', 'predictedAdultCount',
+                         'hostPlantHealth', 'notes', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidBreedingBatch(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(batchId) &&
+                       isValidBreedingBatch(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'name', 'targetSpecies', 'initialCount',
+                         'healthyLarvaeCount', 'diseasedLarvaeCount',
+                         'goodPupaeCount', 'defectivePupaeCount',
+                         'predictedYieldPercent', 'predictedAdultCount',
+                         'hostPlantHealth', 'notes', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(batchId);
+    }
+
+    match /users/{userId}/settings/{settingId} {
+      allow list: if isOwner(userId);
+      allow get: if isOwner(userId) && isValidId(settingId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(settingId) &&
+                       incoming().keys().hasAll(['userId', 'engineMode', 'minConfidence', 'updatedAt']) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'engineMode', 'customCnnUrl',
+                         'driveFolderId', 'driveDirectoryPath', 'speciesModelFile',
+                         'minConfidence', 'updatedAt'
+                       ]) &&
+                       isValidUserPreferences(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(settingId) &&
+                       isValidUserPreferences(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'engineMode', 'customCnnUrl',
+                         'driveFolderId', 'driveDirectoryPath', 'speciesModelFile',
+                         'minConfidence', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(settingId);
+    }
+  }
+}

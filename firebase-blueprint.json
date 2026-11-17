@@ -1,0 +1,221 @@
+{
+  "entities": {
+    "ClassificationRecord": {
+      "title": "ClassificationRecord",
+      "description": "A butterfly or lepidoptera specimen classification event logged by a breeder.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the breeder."
+        },
+        "task": {
+          "type": "string",
+          "enum": ["species", "stage", "disease", "instar", "defect", "sex", "full_scan"],
+          "description": "Classification task key matching Classification.gs."
+        },
+        "label": {
+          "type": "string",
+          "description": "Accepted class label or Unknown if confidence < threshold."
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Top prediction confidence score between 0.0 and 1.0."
+        },
+        "identified": {
+          "type": "boolean",
+          "description": "Whether prediction matched an official class and met min confidence."
+        },
+        "speciesLabel": {
+          "type": "string",
+          "description": "Detected Marinduque butterfly species label."
+        },
+        "stageLabel": {
+          "type": "string",
+          "description": "Detected lifecycle stage (Egg, Larva, Pupa, Adult)."
+        },
+        "diseaseLabel": {
+          "type": "string",
+          "description": "Detected larval disease status (Healthy, Diseased)."
+        },
+        "instarLabel": {
+          "type": "string",
+          "description": "Detected larval instar (1st-5th instar)."
+        },
+        "defectLabel": {
+          "type": "string",
+          "description": "Detected pupae defect status (Good, Defective)."
+        },
+        "sexLabel": {
+          "type": "string",
+          "description": "Detected adult gender (Male, Female)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional field observation notes."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Optional diagnostic summary or conservation advice."
+        },
+        "engineMode": {
+          "type": "string",
+          "enum": ["gemini_vision", "custom_cnn"],
+          "description": "Inference engine used for classification."
+        },
+        "batchName": {
+          "type": "string",
+          "description": "Optional breeding batch name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "task", "label", "confidence", "identified", "engineMode", "createdAt", "updatedAt"]
+    },
+    "BreedingBatch": {
+      "title": "BreedingBatch",
+      "description": "A butterfly breeding cohort used for conservation yield prediction.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the breeder."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the breeding cohort or enclosure."
+        },
+        "targetSpecies": {
+          "type": "string",
+          "description": "Target butterfly species in the cohort."
+        },
+        "initialCount": {
+          "type": "integer",
+          "description": "Starting egg or larvae count."
+        },
+        "healthyLarvaeCount": {
+          "type": "integer",
+          "description": "Number of healthy larvae observed."
+        },
+        "diseasedLarvaeCount": {
+          "type": "integer",
+          "description": "Number of diseased larvae observed."
+        },
+        "goodPupaeCount": {
+          "type": "integer",
+          "description": "Number of healthy good pupae observed."
+        },
+        "defectivePupaeCount": {
+          "type": "integer",
+          "description": "Number of defective pupae observed."
+        },
+        "predictedYieldPercent": {
+          "type": "number",
+          "description": "Predicted healthy adult emergence yield percentage (0-100)."
+        },
+        "predictedAdultCount": {
+          "type": "integer",
+          "description": "Estimated number of viable adult butterflies."
+        },
+        "hostPlantHealth": {
+          "type": "string",
+          "enum": ["Optimal", "Moderate", "Stressed"],
+          "description": "Condition of host plants in the enclosure."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional husbandry notes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "name",
+        "targetSpecies",
+        "initialCount",
+        "healthyLarvaeCount",
+        "diseasedLarvaeCount",
+        "goodPupaeCount",
+        "defectivePupaeCount",
+        "predictedYieldPercent",
+        "predictedAdultCount",
+        "hostPlantHealth",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPreferences": {
+      "title": "UserPreferences",
+      "description": "Breeder engine preferences and optional custom CNN API URL.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID."
+        },
+        "engineMode": {
+          "type": "string",
+          "enum": ["gemini_vision", "custom_cnn"],
+          "description": "Preferred classification backend."
+        },
+        "customCnnUrl": {
+          "type": "string",
+          "description": "Optional URL for external api.py CNN server hosting .keras models."
+        },
+        "driveFolderId": {
+          "type": "string",
+          "description": "Google Drive Butterfly Dataset folder ID."
+        },
+        "driveDirectoryPath": {
+          "type": "string",
+          "description": "Google Drive directory path containing .keras models and class JSON files."
+        },
+        "speciesModelFile": {
+          "type": "string",
+          "description": "Species identification Keras model filename (e.g. butterfly_species.keras)."
+        },
+        "minConfidence": {
+          "type": "number",
+          "description": "Minimum confidence threshold (default 0.5)."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "engineMode", "minConfidence", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/classifications/{recordId}": {
+      "schema": { "$ref": "#/entities/ClassificationRecord" },
+      "description": "User-isolated specimen classification logs."
+    },
+    "/users/{userId}/batches/{batchId}": {
+      "schema": { "$ref": "#/entities/BreedingBatch" },
+      "description": "User-isolated breeding cohort yield prediction records."
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/UserPreferences" },
+      "description": "User-isolated engine and threshold settings."
+    }
+  }
+}

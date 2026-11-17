@@ -1,0 +1,6 @@
+{
+  "name": "LepVision",
+  "description": "AI-powered butterfly conservation, life stage, larval disease, pupae defect, and yield prediction system for Marinduque lepidoptera breeders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
